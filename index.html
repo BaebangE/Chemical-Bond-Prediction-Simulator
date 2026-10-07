@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>탄소 결합 & 물질 예측 가상 실험실</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        carbonRed: '#ef4444',
+                        carbonRedDark: '#991b1b',
+                        bondDark: '#0f172a'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Three.js CDN for reliable 3D rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #ffffff;
+            color: #0f172a;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .ui-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+        }
+
+        .item-active {
+            background-color: #fef2f2 !important;
+            border-color: #ef4444 !important;
+            color: #b91c1c !important;
+        }
+
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-white text-slate-900">
+
+    <!-- Header -->
+    <header class="border-b border-slate-200 bg-white/95 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-2.5 sm:space-x-3">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-600 flex items-center justify-center font-black text-lg sm:text-xl text-white shadow-md shadow-red-500/30">
+                    C⁶
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">탄소 결합 & 물질 예측 시뮬레이터</h1>
+                    <p class="text-[10px] sm:text-xs text-red-600 font-semibold">고등학교 통합과학 · 화학 I 탄소 & 유기 화합물 탐구</p>
+                </div>
+            </div>
+
+            <!-- Top Mode Tabs -->
+            <nav class="flex w-full sm:w-auto space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs mt-1 sm:mt-0 justify-stretch sm:justify-start">
+                <button id="nav-sim" onclick="switchMainTab('sim')" class="flex-1 sm:flex-none px-3 sm:px-3.5 py-1.5 rounded-lg font-bold transition-all bg-white text-red-600 shadow-sm border border-slate-200 text-center">
+                    🧪 물질 탐구
+                </button>
+                <button id="nav-free" onclick="switchMainTab('free')" class="flex-1 sm:flex-none px-3 sm:px-3.5 py-1.5 rounded-lg font-medium text-slate-600 hover:text-slate-900 transition-all text-center flex items-center justify-center space-x-1">
+                    <span>🧩 자유 결합 예측</span>
+                    <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping inline-block"></span>
+                </button>
+                <button id="nav-quiz" onclick="switchMainTab('quiz')" class="flex-1 sm:flex-none px-3 sm:px-3.5 py-1.5 rounded-lg font-medium text-slate-600 hover:text-slate-900 transition-all text-center">
+                    🎯 개념 퀴즈
+                </button>
+                <button id="nav-theory" onclick="switchMainTab('theory')" class="flex-1 sm:flex-none px-3 sm:px-3.5 py-1.5 rounded-lg font-medium text-slate-600 hover:text-slate-900 transition-all text-center">
+                    📖 결합 이론
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-5 flex-grow">
+
+        <!-- ================= SECTION 1: MAIN SIMULATION & PREDICTOR ================= -->
+        <div id="section-sim" class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+            
+            <!-- LEFT SIDEBAR: Material Selection List (4 / 12 Cols) -->
+            <div class="lg:col-span-4 flex flex-col space-y-3 sm:space-y-4 order-2 lg:order-1">
+                <div class="ui-card rounded-2xl p-3.5 sm:p-4 border border-slate-200 flex flex-col flex-grow">
+                    <div class="flex items-center justify-between pb-2.5 border-b border-slate-100">
+                        <div>
+                            <h2 class="text-xs sm:text-sm font-bold text-slate-900">예측 물질 선택 (Left Menu)</h2>
+                            <p class="text-[10px] sm:text-[11px] text-slate-500">결합 형태별 클릭 시 정밀 원자 조립 애니메이션 재현</p>
+                        </div>
+                        <span id="material-count-badge" class="px-2 py-0.5 text-[10px] bg-red-100 text-red-700 font-bold rounded-full">총 15종 탐구</span>
+                    </div>
+
+                    <!-- Clear Strict Bond Type Filter Tabs -->
+                    <div class="grid grid-cols-4 gap-1 my-2.5 text-[10px] sm:text-[11px]">
+                        <button onclick="filterMaterials('all')" class="filter-btn py-1.5 px-1 rounded-lg bg-slate-800 text-white font-bold text-center" id="filter-all">전체</button>
+                        <button onclick="filterMaterials('single')" class="filter-btn py-1.5 px-1 rounded-lg bg-slate-100 text-slate-600 font-medium hover:bg-slate-200 text-center" id="filter-single">단일 (sp³)</button>
+                        <button onclick="filterMaterials('double')" class="filter-btn py-1.5 px-1 rounded-lg bg-slate-100 text-slate-600 font-medium hover:bg-slate-200 text-center" id="filter-double">이중 (sp²)</button>
+                        <button onclick="filterMaterials('triple')" class="filter-btn py-1.5 px-1 rounded-lg bg-slate-100 text-slate-600 font-medium hover:bg-slate-200 text-center" id="filter-triple">삼중 (sp)</button>
+                    </div>
+
+                    <!-- Material List Container -->
+                    <div id="material-list" class="space-y-2 mt-1 overflow-y-auto max-h-[380px] sm:max-h-[500px] pr-1 flex-grow">
+                        <!-- Dynamic Material Item Buttons generated by JS -->
+                    </div>
+                </div>
+
+                <!-- Custom Combination Variable Controls -->
+                <div class="ui-card rounded-2xl p-3.5 sm:p-4 space-y-2.5">
+                    <h3 class="text-xs font-bold text-slate-800 flex items-center justify-between">
+                        <span>⚙️ 혼성 오비탈 조건별 물질 전환</span>
+                        <span class="text-[10px] text-slate-400">결합 분류 기준</span>
+                    </h3>
+                    <div class="grid grid-cols-3 gap-1.5 text-xs">
+                        <button id="btn-sp3" onclick="setHybrid('sp3')" class="py-2 rounded-lg border text-center font-semibold text-slate-700 bg-slate-50 hover:border-red-400">
+                            sp³ (단일)
+                        </button>
+                        <button id="btn-sp2" onclick="setHybrid('sp2')" class="py-2 rounded-lg border text-center font-semibold text-slate-700 bg-slate-50 hover:border-red-400">
+                            sp² (이중)
+                        </button>
+                        <button id="btn-sp" onclick="setHybrid('sp')" class="py-2 rounded-lg border text-center font-semibold text-slate-700 bg-slate-50 hover:border-red-400">
+                            sp (삼중)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT CANVAS VISUALIZER & ANALYSIS PANEL (8 / 12 Cols) -->
+            <div class="lg:col-span-8 flex flex-col space-y-4 order-1 lg:order-2">
+                
+                <!-- 3D Canvas Box -->
+                <div class="ui-card rounded-2xl p-3.5 sm:p-4 flex flex-col relative overflow-hidden bg-white">
+                    
+                    <!-- Canvas Top Bar Controls -->
+                    <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
+                        <div class="flex items-center space-x-1.5 sm:space-x-2">
+                            <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-500 animate-pulse inline-block"></span>
+                            <span id="canvas-status-title" class="text-xs sm:text-sm font-bold text-slate-800 line-clamp-1">
+                                다이아몬드 (Diamond) 탄소 결합 조립 진행 중...
+                            </span>
+                        </div>
+
+                        <!-- Top Interactive Controls Group -->
+                        <div class="flex flex-wrap items-center gap-1.5 w-full sm:w-auto justify-end">
+                            <button onclick="triggerAssemblyAnimation()" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-sm transition flex items-center space-x-1">
+                                <span>▶ 조립 다시보기</span>
+                            </button>
+
+                            <!-- Interactive Atom Add/Remove Control Box (C, H, O) -->
+                            <div class="flex items-center space-x-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                                <button onclick="addAtom('C')" title="탄소 원자 추가 (+C)" class="px-2 py-0.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded text-xs transition active:scale-95">
+                                    +C
+                                </button>
+                                <button onclick="removeAtom('C')" title="탄소 원자 제거 (-C)" class="px-2 py-0.5 bg-red-100 hover:bg-red-200 text-red-700 font-bold rounded text-xs transition active:scale-95">
+                                    -C
+                                </button>
+                                <span class="text-slate-300 text-xs px-0.5">|</span>
+                                <button onclick="addAtom('H')" title="수소 원자 추가 (+H)" class="px-2 py-0.5 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded text-xs transition active:scale-95">
+                                    +H
+                                </button>
+                                <button onclick="removeAtom('H')" title="수소 원자 제거 (-H)" class="px-2 py-0.5 bg-sky-100 hover:bg-sky-200 text-sky-700 font-bold rounded text-xs transition active:scale-95">
+                                    -H
+                                </button>
+                                <span class="text-slate-300 text-xs px-0.5">|</span>
+                                <button onclick="addAtom('O')" title="산소 원자 추가 (+O)" class="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded text-xs transition active:scale-95">
+                                    +O
+                                </button>
+                                <button onclick="removeAtom('O')" title="산소 원자 제거 (-O)" class="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold rounded text-xs transition active:scale-95">
+                                    -O
+                                </button>
+                            </div>
+
+                            <button onclick="resetView()" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition">
+                                시점 초기화
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Canvas Window -->
+                    <div class="relative w-full h-[300px] sm:h-[400px] rounded-xl overflow-hidden bg-white border border-slate-200 shadow-inner">
+                        <canvas id="canvas-3d" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+                        
+                        <!-- Overlay Guidance Notice -->
+                        <div class="absolute bottom-2.5 right-2.5 text-[10px] sm:text-[11px] text-slate-500 bg-white/90 px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm pointer-events-none">
+                            🖱️ 터치/드래그: 회전 | 휠/핀치: 확대
+                        </div>
+
+                        <!-- Legend Box -->
+                        <div class="absolute top-2.5 left-2.5 bg-white/90 p-2 sm:p-2.5 rounded-xl text-[10px] sm:text-[11px] border border-slate-200 shadow-sm space-y-1 pointer-events-none">
+                            <div class="flex items-center space-x-1.5 sm:space-x-2">
+                                <span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-red-500 border border-red-700 inline-block shadow-sm"></span>
+                                <span class="font-bold text-slate-800">탄소 (C)</span>
+                            </div>
+                            <div class="flex items-center space-x-1.5 sm:space-x-2">
+                                <span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-sky-300 border border-sky-500 inline-block"></span>
+                                <span class="text-slate-600">수소 (H)</span>
+                            </div>
+                            <div class="flex items-center space-x-1.5 sm:space-x-2">
+                                <span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-amber-500 border border-amber-700 inline-block"></span>
+                                <span class="font-bold text-amber-900">산소 (O)</span>
+                            </div>
+                            <div class="flex items-center space-x-1.5 sm:space-x-2">
+                                <span class="w-3.5 h-1.5 bg-slate-900 inline-block rounded"></span>
+                                <span class="font-semibold text-slate-800">공유 결합</span>
+                            </div>
+                        </div>
+
+                        <!-- Custom Modified Atom Alert Badge -->
+                        <div id="custom-atom-badge" class="hidden absolute bottom-2.5 left-2.5 bg-amber-50 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-sm">
+                            ✏️ 사용자 편집 구조 (C: <span id="cnt-c">0</span>, H: <span id="cnt-h">0</span>, O: <span id="cnt-o">0</span>)
+                        </div>
+
+                        <!-- Assembly Playing Banner -->
+                        <div id="assembly-banner" class="absolute top-2.5 right-2.5 bg-red-600 text-white px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-bold shadow-md animate-bounce">
+                            ⚡ 원자 결합 조립 중...
+                        </div>
+                    </div>
+
+                    <!-- Animation Speed Slider Controls -->
+                    <div class="flex justify-between items-center mt-2.5 pt-2 border-t border-slate-100 text-xs">
+                        <span class="text-slate-500 font-medium text-[11px] sm:text-xs">조립 속도:</span>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-slate-400 text-[10px]">느림</span>
+                            <input type="range" id="slider-speed" min="0.5" max="2.5" step="0.25" value="1" class="accent-red-600 w-24 sm:w-36 cursor-pointer">
+                            <span class="text-slate-400 text-[10px]">빠름</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Material Description & Property Gauges Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                    
+                    <!-- Material Info Text Card -->
+                    <div class="ui-card rounded-2xl p-4 border-l-4 border-l-red-500 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span id="info-badge" class="px-2 py-0.5 text-[10px] font-bold rounded-md bg-red-50 text-red-700 border border-red-200">
+                                    단일 결합 (sp³)
+                                </span>
+                                <span id="info-formula" class="text-xs font-mono font-bold text-slate-500">Cₙ Lattice</span>
+                            </div>
+                            <h3 id="info-title" class="text-base sm:text-lg font-extrabold text-slate-900 mb-1.5">다이아몬드 (Diamond)</h3>
+                            <p id="info-desc" class="text-xs text-slate-600 leading-relaxed">
+                                각 탄소가 sp³ 혼성 오비탈을 통해 4개의 다른 탄소 원자와 강력한 단일 공유 결합을 형성하는 정사면체 3차원 입체 결정입니다.
+                            </p>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-slate-100 text-xs space-y-1.5 text-slate-700">
+                            <div><span class="font-bold text-slate-900">결합 각도:</span> <span id="info-angle" class="text-red-600 font-semibold">109.5°</span></div>
+                            <div class="p-2 bg-slate-50 rounded-lg border border-slate-100">
+                                <span class="font-bold text-slate-900 block mb-0.5">💡 실생활 및 산업적 쓰임새:</span>
+                                <span id="info-app" class="text-slate-700 font-medium leading-normal text-[11px] sm:text-xs">공업용 절단 도구, 정밀 보석, 반도체 고효율 방열판</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Property Gauges Card -->
+                    <div class="ui-card rounded-2xl p-4 space-y-3">
+                        <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">📊 물성 수치 예측 (Physical Properties)</h4>
+                        
+                        <!-- 1. Hardness -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-600 font-medium">굳기/경도 (Mohs Hardness)</span>
+                                <span id="val-hardness" class="font-bold text-red-600">100 / 100 (최고)</span>
+                            </div>
+                            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div id="bar-hardness" class="h-full bg-red-500 transition-all duration-500" style="width: 100%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Electrical Conductivity -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-600 font-medium">전기 전도성 (Conductivity)</span>
+                                <span id="val-elec" class="font-bold text-slate-800">부도체 (0)</span>
+                            </div>
+                            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div id="bar-elec" class="h-full bg-slate-800 transition-all duration-500" style="width: 2%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Thermal Conductivity -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-600 font-medium">열전도율 (Thermal)</span>
+                                <span id="val-thermal" class="font-bold text-red-600">매우 높음</span>
+                            </div>
+                            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div id="bar-thermal" class="h-full bg-red-400 transition-all duration-500" style="width: 98%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ================= SECTION 2: FREE BUILDER & COMPOUND AUTO PREDICTOR ================= -->
+        <div id="section-free" class="hidden space-y-4 max-w-6xl mx-auto">
+            
+            <!-- Result Banner / Detected Substance Title -->
+            <div id="free-prediction-banner" class="ui-card rounded-2xl p-4 sm:p-5 border-l-8 border-l-amber-500 bg-gradient-to-r from-amber-50/70 via-white to-white transition-all shadow-md">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <span id="free-match-badge" class="px-2.5 py-0.5 text-xs font-extrabold rounded-full bg-amber-500 text-white shadow-sm">
+                                🔍 자유 탐구 모드
+                            </span>
+                            <span id="free-formula-display" class="font-mono text-xs sm:text-sm font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                CH₄
+                            </span>
+                        </div>
+                        <h2 id="free-predicted-name" class="text-lg sm:text-2xl font-black text-slate-900 leading-tight">
+                            메테인 (Methane, CH₄)
+                        </h2>
+                        <p id="free-predicted-desc" class="text-xs text-slate-600">
+                            탄소 1개와 수소 4개가 결합된 대표적 정사면체 알케인 가스입니다.
+                        </p>
+                    </div>
+
+                    <!-- Formula Atom Counters Badge Group -->
+                    <div class="flex items-center space-x-2 bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="text-center px-2 border-r border-slate-100">
+                            <span class="block text-[10px] text-red-500 font-extrabold">탄소 (C)</span>
+                            <span id="free-cnt-c-val" class="text-base font-black text-slate-900">1</span>
+                        </div>
+                        <div class="text-center px-2 border-r border-slate-100">
+                            <span class="block text-[10px] text-sky-500 font-extrabold">수소 (H)</span>
+                            <span id="free-cnt-h-val" class="text-base font-black text-slate-900">4</span>
+                        </div>
+                        <div class="text-center px-2">
+                            <span class="block text-[10px] text-amber-500 font-extrabold">산소 (O)</span>
+                            <span id="free-cnt-o-val" class="text-base font-black text-slate-900">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Free Canvas & Controls Workspace -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                
+                <!-- Left Interactive Controls & Atom Manipulator (4 / 12 Cols) -->
+                <div class="lg:col-span-4 flex flex-col space-y-3">
+                    <div class="ui-card rounded-2xl p-4 border border-slate-200 space-y-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900 flex items-center justify-between">
+                                <span>⚛️ 원자 조합 컨트롤러</span>
+                                <span class="text-[10px] text-slate-400 font-normal">C·H·O 원자 실시간 결합</span>
+                            </h3>
+                            <p class="text-[11px] text-slate-500 mt-0.5">
+                                원자를 추가하거나 빼면 3D 분자 구조가 동적 실시간 애니메이션 효과와 함께 조립됩니다.
+                            </p>
+                        </div>
+
+                        <!-- Carbon Control Row -->
+                        <div class="p-3 bg-red-50/70 border border-red-200 rounded-xl flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-4 h-4 rounded-full bg-red-500 border border-red-700 inline-block shadow-sm"></span>
+                                <div>
+                                    <span class="text-xs font-bold text-slate-900 block">탄소 원자 (Carbon, C)</span>
+                                    <span class="text-[10px] text-slate-500">원자량 ~12.011 | 결합손 4개</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <button onclick="freeAddAtom('C')" class="w-7 h-7 bg-red-500 hover:bg-red-600 active:scale-95 text-white font-bold rounded-lg text-sm transition flex items-center justify-center shadow-sm">
+                                    +
+                                </button>
+                                <button onclick="freeRemoveAtom('C')" class="w-7 h-7 bg-red-100 hover:bg-red-200 active:scale-95 text-red-700 font-bold rounded-lg text-sm transition flex items-center justify-center">
+                                    -
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Hydrogen Control Row -->
+                        <div class="p-3 bg-sky-50/70 border border-sky-200 rounded-xl flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-4 h-4 rounded-full bg-sky-300 border border-sky-500 inline-block shadow-sm"></span>
+                                <div>
+                                    <span class="text-xs font-bold text-slate-900 block">수소 원자 (Hydrogen, H)</span>
+                                    <span class="text-[10px] text-slate-500">원자량 ~1.008 | 결합손 1개</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <button onclick="freeAddAtom('H')" class="w-7 h-7 bg-sky-500 hover:bg-sky-600 active:scale-95 text-white font-bold rounded-lg text-sm transition flex items-center justify-center shadow-sm">
+                                    +
+                                </button>
+                                <button onclick="freeRemoveAtom('H')" class="w-7 h-7 bg-sky-100 hover:bg-sky-200 active:scale-95 text-sky-700 font-bold rounded-lg text-sm transition flex items-center justify-center">
+                                    -
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Oxygen Control Row -->
+                        <div class="p-3 bg-amber-50/70 border border-amber-200 rounded-xl flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-4 h-4 rounded-full bg-amber-500 border border-amber-700 inline-block shadow-sm"></span>
+                                <div>
+                                    <span class="text-xs font-bold text-slate-900 block">산소 원자 (Oxygen, O)</span>
+                                    <span class="text-[10px] text-slate-500">원자량 ~15.999 | 결합손 2개</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <button onclick="freeAddAtom('O')" class="w-7 h-7 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold rounded-lg text-sm transition flex items-center justify-center shadow-sm">
+                                    +
+                                </button>
+                                <button onclick="freeRemoveAtom('O')" class="w-7 h-7 bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-800 font-bold rounded-lg text-sm transition flex items-center justify-center">
+                                    -
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Preset Quick Select Buttons -->
+                        <div class="pt-2 border-t border-slate-100">
+                            <span class="text-[11px] font-bold text-slate-700 block mb-1.5">⚡ 자주 찾는 대표 예측 물질 단축 선택:</span>
+                            <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+                                <button onclick="loadFreePreset('water')" class="p-1.5 rounded-lg border bg-slate-50 hover:bg-amber-50 text-slate-700 font-semibold text-left transition hover:border-amber-300">
+                                    💧 물 (H₂O)
+                                </button>
+                                <button onclick="loadFreePreset('co2')" class="p-1.5 rounded-lg border bg-slate-50 hover:bg-amber-50 text-slate-700 font-semibold text-left transition hover:border-amber-300">
+                                    🫧 이산화탄소 (CO₂)
+                                </button>
+                                <button onclick="loadFreePreset('ethanol')" class="p-1.5 rounded-lg border bg-slate-50 hover:bg-amber-50 text-slate-700 font-semibold text-left transition hover:border-amber-300">
+                                    🍷 에탄올 (C₂H₆O)
+                                </button>
+                                <button onclick="loadFreePreset('acetic')" class="p-1.5 rounded-lg border bg-slate-50 hover:bg-amber-50 text-slate-700 font-semibold text-left transition hover:border-amber-300">
+                                    🧪 아세트산 (C₂H₄O₂)
+                                </button>
+                                <button onclick="loadFreePreset('methane')" class="p-1.5 rounded-lg border bg-slate-50 hover:bg-amber-50 text-slate-700 font-semibold text-left transition hover:border-amber-300">
+                                    🔥 메테인 (CH₄)
+                                </button>
+                                <button onclick="loadFreePreset('glucose')" class="p-1.5 rounded-lg border bg-slate-50 hover:bg-amber-50 text-slate-700 font-semibold text-left transition hover:border-amber-300">
+                                    🍬 포도당 (C₆H₁₂O₆)
+                                </button>
+                            </div>
+                        </div>
+
+                        <button onclick="clearFreeAtoms()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+                            🧹 원자 구성 완전 초기화
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right 3D Visualizer Canvas & Live Property Card (8 / 12 Cols) -->
+                <div class="lg:col-span-8 flex flex-col space-y-4">
+                    <div class="ui-card rounded-2xl p-3.5 sm:p-4 flex flex-col relative overflow-hidden bg-white">
+                        <div class="flex justify-between items-center mb-2 text-xs">
+                            <span class="font-bold text-slate-800 flex items-center space-x-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                <span>3D 원자 분자 구조 실시간 입체뷰 (동적 조립 애니메이션 적용)</span>
+                            </span>
+                            <span class="text-slate-400 text-[11px]">C, H, O 3차원 최적화 입체 시뮬레이션</span>
+                        </div>
+
+                        <!-- Dedicated Free 3D Canvas -->
+                        <div class="relative w-full h-[320px] sm:h-[380px] rounded-xl overflow-hidden bg-white border border-slate-200 shadow-inner">
+                            <canvas id="canvas-free-3d" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+                            
+                            <!-- Legend -->
+                            <div class="absolute top-2.5 left-2.5 bg-white/90 p-2 rounded-xl text-[10px] border border-slate-200 shadow-sm space-y-1 pointer-events-none">
+                                <div class="flex items-center space-x-1.5">
+                                    <span class="w-3 h-3 rounded-full bg-red-500 border border-red-700 inline-block"></span>
+                                    <span class="font-bold text-slate-800">C (탄소)</span>
+                                </div>
+                                <div class="flex items-center space-x-1.5">
+                                    <span class="w-3 h-3 rounded-full bg-sky-300 border border-sky-500 inline-block"></span>
+                                    <span class="text-slate-600">H (수소)</span>
+                                </div>
+                                <div class="flex items-center space-x-1.5">
+                                    <span class="w-3 h-3 rounded-full bg-amber-500 border border-amber-700 inline-block"></span>
+                                    <span class="font-bold text-amber-900">O (산소)</span>
+                                </div>
+                            </div>
+
+                            <!-- Dynamic Free Animation Status Toast -->
+                            <div id="free-anim-toast" class="hidden absolute top-2.5 right-2.5 bg-amber-500 text-white px-2.5 py-1 rounded-full text-[11px] font-bold shadow-md animate-pulse">
+                                ✨ 원자 추가 & 실시간 결합 재배치 중...
+                            </div>
+
+                            <div class="absolute bottom-2.5 right-2.5 text-[10px] text-slate-500 bg-white/90 px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm pointer-events-none">
+                                🖱️ 마우스/터치 드래그로 360도 자유 관찰
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Calculated Properties & Chemical Info Panel -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                        <div class="ui-card p-3.5 rounded-xl border-l-4 border-l-sky-500 space-y-1">
+                            <span class="text-slate-500 text-[10px] font-bold block">분자량 (Molecular Weight)</span>
+                            <span id="free-mol-weight" class="text-base font-extrabold text-slate-900 font-mono">16.04 g/mol</span>
+                            <p class="text-[10px] text-slate-500 leading-tight">1몰당 질량 (C:12.011, H:1.008, O:15.999)</p>
+                        </div>
+
+                        <div class="ui-card p-3.5 rounded-xl border-l-4 border-l-amber-500 space-y-1">
+                            <span class="text-slate-500 text-[10px] font-bold block">작용기 / 구조적 특성</span>
+                            <span id="free-functional-group" class="text-xs font-bold text-amber-700 block line-clamp-1">알케인 (Alkane)</span>
+                            <p id="free-bond-info" class="text-[10px] text-slate-600 leading-tight">단일 결합 (sp³ 혼성 오비탈)</p>
+                        </div>
+
+                        <div class="ui-card p-3.5 rounded-xl border-l-4 border-l-emerald-500 space-y-1">
+                            <span class="text-slate-500 text-[10px] font-bold block">실생활 주요 특징 및 용도</span>
+                            <span id="free-usage-text" class="text-[11px] font-medium text-slate-700 leading-normal block line-clamp-2">
+                                천연가스(LNG)의 주성분이며 난방 및 버스 연료로 널리 쓰입니다.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ================= SECTION 3: HIGH SCHOOL QUIZ ================= -->
+        <div id="section-quiz" class="hidden space-y-4 max-w-4xl mx-auto">
+            <div class="ui-card rounded-2xl p-4 sm:p-6">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900">🎯 탄소 & 유기 화합물 개념 평가 퀴즈 (무작위 3문항)</h2>
+                        <p class="text-xs text-slate-500">6개 문제 풀 중 3문제가 매번 새롭게 랜덤 출제됩니다.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="reshuffleQuiz()" class="px-3 py-1 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition flex items-center space-x-1">
+                            <span>🔄 문제 새로고침</span>
+                        </button>
+                        <span id="quiz-score" class="px-3 py-1 bg-red-50 text-red-600 border border-red-200 text-xs font-bold rounded-full">
+                            점수: 0 / 3
+                        </span>
+                    </div>
+                </div>
+
+                <div id="quiz-list" class="space-y-5">
+                    <!-- Dynamic Quiz Rendered by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SECTION 4: THEORY REFERENCE ================= -->
+        <div id="section-theory" class="hidden space-y-4 max-w-5xl mx-auto">
+            <div class="ui-card rounded-2xl p-5 sm:p-6 space-y-5">
+                <div>
+                    <h2 class="text-base sm:text-lg font-bold text-slate-900 mb-1">📖 핵심 정리: 탄소(C)·수소(H)·산소(O) 결합 형태 및 유기 화합물</h2>
+                    <p class="text-xs text-slate-500">원자 번호 6번 탄소, 1번 수소, 8번 산소가 이루는 공유 결합 다채성</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                        <div class="font-bold text-red-600 text-sm">1. 단일 결합 (sp³ 혼성)</div>
+                        <p class="text-slate-600 leading-relaxed">
+                            탄소당 4개의 공유 결합을 형성하며 **109.5°** 정사면체 구조를 만듭니다. 자유 전자가 없어 **부도체** 특성을 나타냅니다.
+                            <br><span class="font-semibold text-slate-800">예시:</span> 다이아몬드, 메테인, 에테인, 프로페인, 사이클로헥세인
+                        </p>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                        <div class="font-bold text-red-600 text-sm">2. 이중 결합 (sp² 혼성)</div>
+                        <p class="text-slate-600 leading-relaxed">
+                            탄소당 3개의 공유 결합과 1개의 **비전재화 π 전자**를 형성하여 **120°** 평면 구조를 이룹니다. 이 전자로 인해 **전기 전도성**이 발생합니다.
+                            <br><span class="font-semibold text-slate-800">예시:</span> 흑연, 그래핀, 풀러렌, CNT, 에텐, 벤젠, 이산화탄소
+                        </p>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                        <div class="font-bold text-red-600 text-sm">3. 삼중 결합 및 산소 화합물</div>
+                        <p class="text-slate-600 leading-relaxed">
+                            탄소간 삼중결합(180° 직선) 및 산소(O) 원자와의 공유 결합으로 하이드록시기(-OH), 카복시기(-COOH) 등의 다양한 작용기를 만듭니다.
+                            <br><span class="font-semibold text-slate-800">예시:</span> 에타인, 아세톤, 에탄올, 아세트산, 포도당
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200 py-3 text-center text-xs text-slate-400 bg-white">
+        고등학교 화학 I 탐구 시뮬레이션 | Carbon & Oxygen Bond Prediction Engine
+    </footer>
+
+    <!-- Application Engine Script -->
+    <script>
+        // Database of Carbon Materials
+        const materialDB = [
+            {
+                id: 'diamond',
+                name: '다이아몬드 (Diamond)',
+                bondType: 'single',
+                category: 'allotrope',
+                formula: 'Cₙ (3D Lattice)',
+                hybrid: 'sp3',
+                badge: '단일 결합 (3D 정사면체)',
+                angle: '109.5°',
+                desc: '모든 탄소가 sp³ 단일 공유 결합으로 견고한 정사면체 3차원 입체 망상 결정 구조를 형성합니다.',
+                app: '공업용 정밀 절단기, 유리기구 가공기, 보석, 반도체 초고효율 방열판',
+                hardness: 100,
+                elec: 2,
+                thermal: 98,
+                elecText: '부도체 (0 S/m)',
+                type: 'diamond'
+            },
+            {
+                id: 'methane',
+                name: '메테인 (Methane CH₄)',
+                bondType: 'single',
+                category: 'hydrocarbon',
+                formula: 'CH₄',
+                hybrid: 'sp3',
+                badge: '단일 결합 (정사면체 분자)',
+                angle: '109.5°',
+                desc: '중심 탄소 1개에 수소 4개가 4개의 C-H 단일 결합을 이룬 가장 간단한 정사면체 구조의 탄화수소입니다.',
+                app: '도시가스(LNG), 가정용 난방 연료, 버스 CNG 연료, 수소 제조 원료',
+                hardness: 5,
+                elec: 0,
+                thermal: 10,
+                elecText: '부도체 (기체)',
+                type: 'methane'
+            },
+            {
+                id: 'ethane',
+                name: '에테인 (Ethane C₂H₆)',
+                bondType: 'single',
+                category: 'hydrocarbon',
+                formula: 'C₂H₆',
+                hybrid: 'sp3',
+                badge: '단일 결합 (알케인 쇄상)',
+                angle: '109.5°',
+                desc: '탄소 2개가 C-C 단일 결합을 형성하고 각각 3개의 수소와 단일 결합하여 회전이 가능한 입체 구조입니다.',
+                app: '석유화학 에틸렌 생산의 핵심 원료, 냉매, 산업용 가스 연료',
+                hardness: 5,
+                elec: 0,
+                thermal: 12,
+                elecText: '부도체 (기체)',
+                type: 'ethane'
+            },
+            {
+                id: 'propane',
+                name: '프로페인 (Propane C₃H₈)',
+                bondType: 'single',
+                category: 'hydrocarbon',
+                formula: 'C₃H₈',
+                hybrid: 'sp3',
+                badge: '단일 결합 (지그재그 사슬)',
+                angle: '109.5°',
+                desc: '3개의 탄소가 sp³ 단일 결합으로 지그재그 사슬을 형성하며 굽은 사면체 구조를 이룹니다.',
+                app: 'LPG 가스통 가정/식당 연료, 토치 라이터 가스, 휴대용 버너',
+                hardness: 8,
+                elec: 0,
+                thermal: 15,
+                elecText: '부도체 (액화가스)',
+                type: 'propane'
+            },
+            {
+                id: 'cyclohexane',
+                name: '사이클로헥세인 (C₆H₁₂)',
+                bondType: 'single',
+                category: 'hydrocarbon',
+                formula: 'C₆H₁₂',
+                hybrid: 'sp3',
+                badge: '단일 결합 (의자형 고리)',
+                angle: '109.5°',
+                desc: '6개 탄소가 모두 단일 결합으로 연결되어 무리 없는 의자 모양(Chair conformation) 입체 고리를 만듭니다.',
+                app: '나일론(Nylon) 섬유 원료, 유기 화학 실험용 무극성 용매',
+                hardness: 12,
+                elec: 0,
+                thermal: 18,
+                elecText: '부도체 (액체)',
+                type: 'cyclohexane'
+            },
+            {
+                id: 'graphite',
+                name: '흑연 (Graphite)',
+                bondType: 'double',
+                category: 'allotrope',
+                formula: 'Cₙ (2D Layers)',
+                hybrid: 'sp2',
+                badge: '이중/공명 결합 (2D 층상)',
+                angle: '120°',
+                desc: '탄소들이 sp² 공명 이중결합 판상 구조를 형성하고 자유 전자가 층 사이를 이동하여 전기가 잘 통합니다.',
+                app: '연필심, 2차전지 배터리 음극재, 모터 탄소 브러시, 초고온 용해 도가니',
+                hardness: 15,
+                elec: 85,
+                thermal: 75,
+                elecText: '우수한 전도체',
+                type: 'graphite'
+            },
+            {
+                id: 'graphene',
+                name: '그래핀 (Graphene)',
+                bondType: 'double',
+                category: 'allotrope',
+                formula: 'Cₙ (2D Monolayer)',
+                hybrid: 'sp2',
+                badge: '이중/공명 결합 (벌집 단층)',
+                angle: '120°',
+                desc: '탄소 원자들이 육각형 벌집 모양의 2차원 평면을 이루는 단 1개 원자 두께의 꿈의 신소재입니다.',
+                app: '플렉서블 디스플레이, 초고속 반도체 소자, 방열 필름, 고성능 센서',
+                hardness: 95,
+                elec: 100,
+                thermal: 100,
+                elecText: '초고속 전도성',
+                type: 'graphene'
+            },
+            {
+                id: 'fullerene',
+                name: '풀러렌 (C₆₀ Fullerene)',
+                bondType: 'double',
+                category: 'allotrope',
+                formula: 'C₆₀',
+                hybrid: 'sp2',
+                badge: '이중 결합 (0D 축구공)',
+                angle: '~108° / 120°',
+                desc: '60개 탄소가 단일결합과 이중결합이 교대로 배치되며 축구공 모양 정밀 깎은 이코사헤드론 구형 분자를 형성합니다.',
+                app: '표적 약물 전달체(Drug Delivery), 화장품 항산화제, 초전도체 물질',
+                hardness: 45,
+                elec: 40,
+                thermal: 35,
+                elecText: '반도체성',
+                type: 'fullerene'
+            },
+            {
+                id: 'cnt',
+                name: '탄소 나노튜브 (CNT)',
+                bondType: 'double',
+                category: 'allotrope',
+                formula: 'Cₙ (1D Tube)',
+                hybrid: 'sp2',
+                badge: '이중 결합 (1D 원통)',
+                angle: '~120°',
+                desc: '그래핀 평면이 동그랗게 말려 강철보다 100배 강한 원통 구조를 형성한 나노 소재입니다.',
+                app: '2차전지 도전재, 우주 엘리베이터 케이블 소재, 초고강도 복합재',
+                hardness: 90,
+                elec: 90,
+                thermal: 90,
+                elecText: '매우 우수함',
+                type: 'cnt'
+            },
+            {
+                id: 'ethene',
+                name: '에텐 / 에틸렌 (Ethene C₂H₄)',
+                bondType: 'double',
+                category: 'hydrocarbon',
+                formula: 'C₂H₄',
+                hybrid: 'sp2',
+                badge: '이중 결합 (C=C 알켄)',
+                angle: '120°',
+                desc: '두 탄소 사이에 강력한 C=C 이중 결합 1개를 가져 동일 평면상에 존재하는 평면 분자입니다.',
+                app: '폴리에틸렌(PE) 비닐 플라스틱 제조, 과일(바나나, 사과) 조기 후숙제',
+                hardness: 5,
+                elec: 0,
+                thermal: 10,
+                elecText: '부도체 (기체)',
+                type: 'ethene'
+            },
+            {
+                id: 'benzene',
+                name: '벤젠 (Benzene C₆H₆)',
+                bondType: 'double',
+                category: 'hydrocarbon',
+                formula: 'C₆H₆',
+                hybrid: 'sp2',
+                badge: '이중/공명 결합 (방향족 고리)',
+                angle: '120°',
+                desc: '6개 탄소가 평면 정육각형 고리를 이루며, 1.5결합 형태의 비전재화된 공명 구조를 이룹니다.',
+                app: '합성 고무, 합성 세제, 의약품(아스피린 등), 유기 화학 용매',
+                hardness: 10,
+                elec: 5,
+                thermal: 15,
+                elecText: '부도체 (액체)',
+                type: 'benzene'
+            },
+            {
+                id: 'carbyne',
+                name: '카바인 (Carbyne)',
+                bondType: 'triple',
+                category: 'allotrope',
+                formula: 'Cₙ (1D Chain)',
+                hybrid: 'sp',
+                badge: '삼중 결합 (1D 교대 체인)',
+                angle: '180°',
+                desc: '탄소 원자들이 sp 혼성 삼중 결합과 단일 결합(…-C≡C-C≡C-…)을 교대로 형성하는 1차원 직선 사슬입니다.',
+                app: '나노 기계 소자, 그래핀을 뛰어넘는 차세대 인장 강도 연구 소재',
+                hardness: 98,
+                elec: 60,
+                thermal: 85,
+                elecText: '중간~우수',
+                type: 'carbyne'
+            },
+            {
+                id: 'ethyne',
+                name: '에타인 / 아세틸렌 (Ethyne C₂H₂)',
+                bondType: 'triple',
+                category: 'hydrocarbon',
+                formula: 'C₂H₂',
+                hybrid: 'sp',
+                badge: '삼중 결합 (C≡C 알카인)',
+                angle: '180°',
+                desc: '두 탄소가 C≡C 삼중 결합으로 연결되어 180도 완전한 직선 형태를 취합니다.',
+                app: '고온 산소-아세틸렌 용접 연료, 유기 합성 합성 고분자 원료',
+                hardness: 5,
+                elec: 0,
+                thermal: 10,
+                elecText: '부도체 (기체)',
+                type: 'ethyne'
+            },
+            {
+                id: 'co2_mat',
+                name: '이산화탄소 (CO₂)',
+                bondType: 'double',
+                category: 'oxygenated',
+                formula: 'CO₂',
+                hybrid: 'sp',
+                badge: '이중 결합 (O=C=O 직선)',
+                angle: '180°',
+                desc: '중심 탄소가 양쪽 산소와 각각 이중 공유 결합을 이루어 극성이 상쇄되는 180도 직선 분자입니다.',
+                app: '탄산음료 무기산제, 드라이아이스 소화기, 식물 광합성 필수 기체',
+                hardness: 5,
+                elec: 0,
+                thermal: 8,
+                elecText: '부도체 (기체)',
+                type: 'co2'
+            },
+            {
+                id: 'ethanol_mat',
+                name: '에탄올 (Ethanol C₂H₆O)',
+                bondType: 'single',
+                category: 'oxygenated',
+                formula: 'C₂H₅OH',
+                hybrid: 'sp3',
+                badge: '단일 결합 (알코올 -OH)',
+                angle: '109.5°',
+                desc: '2개의 탄소 사슬 끝에 하이드록시기(-OH)가 연결된 극성 유기 화합물입니다.',
+                app: '의료용 소독용 알코올, 음료용 주류, 바이오 에탄올 친환경 연료',
+                hardness: 10,
+                elec: 0,
+                thermal: 20,
+                elecText: '부도체 (액체)',
+                type: 'ethanol'
+            }
+        ];
+
+        // Global State
+        let currentMaterial = materialDB[0];
+        let currentFilter = 'all';
+        let customCounts = { C: 0, H: 0, O: 0 };
+        let isCustom = false;
+
+        // Free Builder State
+        let freeCounts = { C: 1, H: 4, O: 0 }; // Default Methane CH4
+
+        // Three.js Engine Variables
+        let simScene, simCamera, simRenderer, simGroup;
+        let freeScene, freeCamera, freeRenderer, freeGroup;
+
+        // Animation System Variables for Main Sim Fly-in
+        let activeAtomsData = []; 
+        let activeBondsData = []; 
+        let isAssembling = false;
+        let assemblyProgress = 0;
+        let animSpeed = 1.0;
+
+        // Animation System Variables for Free Mode Pop & Lerp
+        let freeAtomsData = []; // Array of active free atom objects
+        let freeBondsData = []; // Array of active free bond objects
+        let isFreeAnimating = false;
+        let freeAnimProgress = 1.0;
+
+        let isDraggingSim = false, previousMousePositionSim = { x: 0, y: 0 };
+        let isDraggingFree = false, previousMousePositionFree = { x: 0, y: 0 };
+
+        // Colors
+        const C_COLOR = 0xef4444; // Carbon Red
+        const H_COLOR = 0x7dd3fc; // Hydrogen Sky
+        const O_COLOR = 0xf59e0b; // Oxygen Amber
+        const BOND_COLOR = 0x334155; // Bond Dark Slate
+
+        // Initialize Application
+        window.addEventListener('DOMContentLoaded', () => {
+            initSim3D();
+            initFree3D();
+            renderMaterialList();
+            selectMaterial('diamond');
+            updateFreePrediction();
+
+            const speedSlider = document.getElementById('slider-speed');
+            if (speedSlider) {
+                speedSlider.addEventListener('input', (e) => {
+                    animSpeed = parseFloat(e.target.value);
+                });
+            }
+
+            window.addEventListener('resize', () => {
+                onWindowResizeSim();
+                onWindowResizeFree();
+            });
+        });
+
+        // Tab Switch
+        function switchMainTab(tabId) {
+            ['sim', 'free', 'quiz', 'theory'].forEach(id => {
+                const sec = document.getElementById(`section-${id}`);
+                const nav = document.getElementById(`nav-${id}`);
+                if (id === tabId) {
+                    sec.classList.remove('hidden');
+                    nav.className = "flex-1 sm:flex-none px-3 sm:px-3.5 py-1.5 rounded-lg font-bold transition-all bg-white text-red-600 shadow-sm border border-slate-200 text-center";
+                } else {
+                    sec.classList.add('hidden');
+                    nav.className = "flex-1 sm:flex-none px-3 sm:px-3.5 py-1.5 rounded-lg font-medium text-slate-600 hover:text-slate-900 transition-all text-center";
+                }
+            });
+
+            if (tabId === 'sim') {
+                setTimeout(() => onWindowResizeSim(), 50);
+            } else if (tabId === 'free') {
+                setTimeout(() => {
+                    onWindowResizeFree();
+                    updateFree3D(true);
+                }, 50);
+            } else if (tabId === 'quiz') {
+                reshuffleQuiz();
+            }
+        }
+
+        // Section 1: Sim 3D Engine Setup
+        function initSim3D() {
+            const container = document.getElementById('canvas-3d').parentElement;
+            const canvas = document.getElementById('canvas-3d');
+
+            simScene = new THREE.Scene();
+            simScene.background = new THREE.Color(0xffffff);
+
+            simCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            simCamera.position.set(0, 0, 14);
+
+            simRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            simRenderer.setSize(container.clientWidth, container.clientHeight);
+            simRenderer.setPixelRatio(window.devicePixelRatio);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            simScene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight.position.set(10, 20, 15);
+            simScene.add(dirLight);
+
+            simGroup = new THREE.Group();
+            simScene.add(simGroup);
+
+            // Mouse / Touch Interaction
+            canvas.addEventListener('mousedown', (e) => {
+                isDraggingSim = true;
+                previousMousePositionSim = { x: e.clientX, y: e.clientY };
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDraggingSim) return;
+                const deltaMove = { x: e.clientX - previousMousePositionSim.x, y: e.clientY - previousMousePositionSim.y };
+                simGroup.rotation.y += deltaMove.x * 0.01;
+                simGroup.rotation.x += deltaMove.y * 0.01;
+                previousMousePositionSim = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mouseup', () => { isDraggingSim = false; });
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                simCamera.position.z += e.deltaY * 0.01;
+                simCamera.position.z = Math.max(5, Math.min(30, simCamera.position.z));
+            }, { passive: false });
+
+            function animateSim() {
+                requestAnimationFrame(animateSim);
+
+                if (isAssembling) {
+                    assemblyProgress += 0.02 * animSpeed;
+                    if (assemblyProgress >= 1.0) {
+                        assemblyProgress = 1.0;
+                        isAssembling = false;
+                        document.getElementById('assembly-banner')?.classList.add('hidden');
+                    }
+
+                    const easeProgress = 1 - Math.pow(1 - assemblyProgress, 3);
+
+                    activeAtomsData.forEach(item => {
+                        item.mesh.position.lerpVectors(item.startPos, item.targetPos, easeProgress);
+                    });
+
+                    const bondVisibilityThreshold = 0.35;
+                    activeBondsData.forEach(bondItem => {
+                        const p1 = activeAtomsData[bondItem.p1Idx].mesh.position;
+                        const p2 = activeAtomsData[bondItem.p2Idx].mesh.position;
+
+                        if (assemblyProgress > bondVisibilityThreshold) {
+                            bondItem.group.visible = true;
+                            updateBondMeshGroup(bondItem.group, p1, p2, bondItem.order, bondItem.radius);
+                        } else {
+                            bondItem.group.visible = false;
+                        }
+                    });
+                } else if (!isDraggingSim) {
+                    simGroup.rotation.y += 0.003;
+                }
+
+                simRenderer.render(simScene, simCamera);
+            }
+            animateSim();
+        }
+
+        function onWindowResizeSim() {
+            const container = document.getElementById('canvas-3d')?.parentElement;
+            if (!container || !simRenderer) return;
+            simCamera.aspect = container.clientWidth / container.clientHeight;
+            simCamera.updateProjectionMatrix();
+            simRenderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        // Section 2: Free Mode Dedicated 3D Engine Setup
+        function initFree3D() {
+            const container = document.getElementById('canvas-free-3d').parentElement;
+            const canvas = document.getElementById('canvas-free-3d');
+
+            freeScene = new THREE.Scene();
+            freeScene.background = new THREE.Color(0xffffff);
+
+            freeCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            freeCamera.position.set(0, 0, 12);
+
+            freeRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            freeRenderer.setSize(container.clientWidth, container.clientHeight);
+            freeRenderer.setPixelRatio(window.devicePixelRatio);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+            freeScene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight.position.set(10, 20, 15);
+            freeScene.add(dirLight);
+
+            freeGroup = new THREE.Group();
+            freeScene.add(freeGroup);
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDraggingFree = true;
+                previousMousePositionFree = { x: e.clientX, y: e.clientY };
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDraggingFree) return;
+                const deltaMove = { x: e.clientX - previousMousePositionFree.x, y: e.clientY - previousMousePositionFree.y };
+                freeGroup.rotation.y += deltaMove.x * 0.01;
+                freeGroup.rotation.x += deltaMove.y * 0.01;
+                previousMousePositionFree = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mouseup', () => { isDraggingFree = false; });
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                freeCamera.position.z += e.deltaY * 0.01;
+                freeCamera.position.z = Math.max(4, Math.min(25, freeCamera.position.z));
+            }, { passive: false });
+
+            // Free Mode Dynamic Assembly & Bounce Interpolation Loop
+            function animateFree() {
+                requestAnimationFrame(animateFree);
+
+                if (isFreeAnimating) {
+                    freeAnimProgress += 0.04;
+                    if (freeAnimProgress >= 1.0) {
+                        freeAnimProgress = 1.0;
+                        isFreeAnimating = false;
+                        document.getElementById('free-anim-toast')?.classList.add('hidden');
+                    }
+
+                    // Elastic Bounce ease-out curve
+                    const p = freeAnimProgress;
+                    const elasticProgress = Math.sin(p * Math.PI * 0.5);
+
+                    // Update Free Atom positions and scale pop effect
+                    freeAtomsData.forEach(item => {
+                        item.mesh.position.lerpVectors(item.startPos, item.targetPos, elasticProgress);
+                        
+                        // Elastic scale pop
+                        let currentScale = item.startScale + (item.targetScale - item.startScale) * elasticProgress;
+                        if (p < 0.7 && item.isNew) {
+                            currentScale = Math.sin((p / 0.7) * Math.PI) * 1.25 * item.targetScale;
+                        }
+                        item.mesh.scale.set(currentScale, currentScale, currentScale);
+                    });
+
+                    // Update Free Bond Groups
+                    freeBondsData.forEach(bondItem => {
+                        if (freeAtomsData[bondItem.p1Idx] && freeAtomsData[bondItem.p2Idx]) {
+                            const p1 = freeAtomsData[bondItem.p1Idx].mesh.position;
+                            const p2 = freeAtomsData[bondItem.p2Idx].mesh.position;
+                            bondItem.group.visible = p > 0.2;
+                            updateBondMeshGroup(bondItem.group, p1, p2, bondItem.order, bondItem.radius);
+                        }
+                    });
+                } else if (!isDraggingFree) {
+                    freeGroup.rotation.y += 0.004;
+                }
+
+                freeRenderer.render(freeScene, freeCamera);
+            }
+            animateFree();
+        }
+
+        function onWindowResizeFree() {
+            const container = document.getElementById('canvas-free-3d')?.parentElement;
+            if (!container || !freeRenderer) return;
+            freeCamera.aspect = container.clientWidth / container.clientHeight;
+            freeCamera.updateProjectionMatrix();
+            freeRenderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function createAtomMesh(type, radius = null) {
+            let color = C_COLOR;
+            let rad = radius || 0.45;
+
+            if (type === 'C') { color = C_COLOR; rad = radius || 0.45; }
+            else if (type === 'H') { color = H_COLOR; rad = radius || 0.28; }
+            else if (type === 'O') { color = O_COLOR; rad = radius || 0.40; }
+
+            const geometry = new THREE.SphereGeometry(rad, 28, 28);
+            const material = new THREE.MeshPhongMaterial({
+                color: color,
+                shininess: 90,
+                specular: 0x666666
+            });
+            return new THREE.Mesh(geometry, material);
+        }
+
+        function createBondMeshGroup(p1, p2, order = 1, radius = 0.07) {
+            const bondGroup = new THREE.Group();
+            updateBondMeshGroup(bondGroup, p1, p2, order, radius);
+            return bondGroup;
+        }
+
+        function updateBondMeshGroup(bondGroup, p1, p2, order = 1, radius = 0.07) {
+            while (bondGroup.children.length > 0) {
+                const child = bondGroup.children[0];
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+                bondGroup.remove(child);
+            }
+
+            const direction = new THREE.Vector3().subVectors(p2, p1);
+            const length = direction.length();
+            if (length === 0) return;
+
+            const midPoint = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+
+            let perp = new THREE.Vector3(0, 1, 0).cross(direction).normalize();
+            if (perp.length() < 0.01) {
+                perp = new THREE.Vector3(1, 0, 0).cross(direction).normalize();
+            }
+
+            const bondMaterial = new THREE.MeshPhongMaterial({ color: BOND_COLOR, shininess: 60 });
+
+            let offsets = [0];
+            let cylRadius = radius;
+            if (order === 2) {
+                offsets = [-0.12, 0.12];
+                cylRadius = radius * 0.85;
+            } else if (order === 3) {
+                offsets = [-0.18, 0, 0.18];
+                cylRadius = radius * 0.75;
+            }
+
+            offsets.forEach(off => {
+                const geometry = new THREE.CylinderGeometry(cylRadius, cylRadius, length, 14);
+                const cylinder = new THREE.Mesh(geometry, bondMaterial);
+
+                const orientation = new THREE.Matrix4();
+                orientation.lookAt(p1, p2, new THREE.Object3D().up);
+                orientation.multiply(new THREE.Matrix4().set(
+                    1, 0, 0, 0,
+                    0, 0, 1, 0,
+                    0, -1, 0, 0,
+                    0, 0, 0, 1
+                ));
+
+                cylinder.applyMatrix4(orientation);
+
+                const offsetVec = perp.clone().multiplyScalar(off);
+                cylinder.position.copy(midPoint).add(offsetVec);
+
+                bondGroup.add(cylinder);
+            });
+        }
+
+        // Precision Mathematical Generator for Fullerene C60
+        function getFullereneC60Vertices() {
+            const phi = (1 + Math.sqrt(5)) / 2; // Golden ratio ~1.6180339887
+            const rawVerts = [];
+
+            const addPermutations = (x, y, z) => {
+                const signs = [
+                    [1,1,1],[1,1,-1],[1,-1,1],[1,-1,-1],
+                    [-1,1,1],[-1,1,-1],[-1,-1,1],[-1,-1,-1]
+                ];
+                const shifts = [[0,1,2], [1,2,0], [2,0,1]];
+                const tuple = [x, y, z];
+
+                shifts.forEach(([i, j, k]) => {
+                    signs.forEach(([sx, sy, sz]) => {
+                        const vx = tuple[i] * sx;
+                        const vy = tuple[j] * sy;
+                        const vz = tuple[k] * sz;
+                        
+                        if (!rawVerts.some(v => Math.abs(v.x - vx) < 1e-4 && Math.abs(v.y - vy) < 1e-4 && Math.abs(v.z - vz) < 1e-4)) {
+                            rawVerts.push(new THREE.Vector3(vx, vy, vz));
+                        }
+                    });
+                });
+            };
+
+            addPermutations(0, 1, 3 * phi);
+            addPermutations(1, 2 + phi, 2 * phi);
+            addPermutations(2, 1 + 2 * phi, phi);
+
+            // Scale to uniform viewing sphere (Radius = 2.3)
+            const targetR = 2.3;
+            if (rawVerts.length > 0) {
+                const r0 = rawVerts[0].length();
+                rawVerts.forEach(v => v.multiplyScalar(targetR / r0));
+            }
+            return rawVerts;
+        }
+
+        // Generate Distinct 3D Atom & Bond Coordinates for all 15 Materials
+        function generateMaterialData(matType) {
+            const atoms = [];
+            const bonds = [];
+
+            if (matType === 'diamond') {
+                // Precision 3D Diamond Tetrahedral Unit Cell Network (109.5 deg)
+                atoms.push({ type: 'C', pos: new THREE.Vector3(0, 0, 0) });
+
+                // 4 Tetrahedral Primary Nodes
+                const scale = 1.35;
+                const primaryDirs = [
+                    new THREE.Vector3(1, 1, 1).normalize().multiplyScalar(scale),
+                    new THREE.Vector3(-1, -1, 1).normalize().multiplyScalar(scale),
+                    new THREE.Vector3(-1, 1, -1).normalize().multiplyScalar(scale),
+                    new THREE.Vector3(1, -1, -1).normalize().multiplyScalar(scale)
+                ];
+
+                primaryDirs.forEach((pDir, idx) => {
+                    atoms.push({ type: 'C', pos: pDir });
+                    bonds.push({ p1: 0, p2: idx + 1, order: 1 });
+
+                    // Extend outward tetrahedral bonds for secondary Nodes
+                    const outerDirs = [
+                        new THREE.Vector3(1, 1, -1),
+                        new THREE.Vector3(1, -1, 1),
+                        new THREE.Vector3(-1, 1, 1)
+                    ];
+
+                    outerDirs.forEach(od => {
+                        const secPos = pDir.clone().add(od.normalize().multiplyScalar(scale * 0.9));
+                        atoms.push({ type: 'C', pos: secPos });
+                        bonds.push({ p1: idx + 1, p2: atoms.length - 1, order: 1 });
+                    });
+                });
+            } else if (matType === 'methane') {
+                // CH4 Regular Tetrahedral (109.5 deg)
+                atoms.push({ type: 'C', pos: new THREE.Vector3(0, 0, 0) });
+                const dist = 1.15;
+                const dirs = [
+                    new THREE.Vector3(1, 1, 1).normalize().multiplyScalar(dist),
+                    new THREE.Vector3(-1, -1, 1).normalize().multiplyScalar(dist),
+                    new THREE.Vector3(-1, 1, -1).normalize().multiplyScalar(dist),
+                    new THREE.Vector3(1, -1, -1).normalize().multiplyScalar(dist)
+                ];
+                dirs.forEach((d, i) => {
+                    atoms.push({ type: 'H', pos: d });
+                    bonds.push({ p1: 0, p2: i + 1, order: 1 });
+                });
+            } else if (matType === 'ethane') {
+                // C2H6 Staggered Conformation
+                atoms.push({ type: 'C', pos: new THREE.Vector3(-0.75, 0, 0) });
+                atoms.push({ type: 'C', pos: new THREE.Vector3(0.75, 0, 0) });
+                bonds.push({ p1: 0, p2: 1, order: 1 });
+
+                // C1 H's
+                atoms.push({ type: 'H', pos: new THREE.Vector3(-1.4, 0.95, 0) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(-1.4, -0.48, 0.82) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(-1.4, -0.48, -0.82) });
+                bonds.push({ p1: 0, p2: 2, order: 1 }, { p1: 0, p2: 3, order: 1 }, { p1: 0, p2: 4, order: 1 });
+
+                // C2 H's (Staggered 60 deg)
+                atoms.push({ type: 'H', pos: new THREE.Vector3(1.4, -0.95, 0) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(1.4, 0.48, 0.82) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(1.4, 0.48, -0.82) });
+                bonds.push({ p1: 1, p2: 5, order: 1 }, { p1: 1, p2: 6, order: 1 }, { p1: 1, p2: 7, order: 1 });
+            } else if (matType === 'propane') {
+                // C3H8 (Zigzag 109.5 deg)
+                atoms.push({ type: 'C', pos: new THREE.Vector3(-1.25, -0.35, 0) });
+                atoms.push({ type: 'C', pos: new THREE.Vector3(0, 0.35, 0) });
+                atoms.push({ type: 'C', pos: new THREE.Vector3(1.25, -0.35, 0) });
+                bonds.push({ p1: 0, p2: 1, order: 1 }, { p1: 1, p2: 2, order: 1 });
+
+                // C1 H's
+                atoms.push({ type: 'H', pos: new THREE.Vector3(-2.0, 0.2, 0) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(-1.3, -1.0, 0.82) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(-1.3, -1.0, -0.82) });
+                bonds.push({ p1: 0, p2: 3, order: 1 }, { p1: 0, p2: 4, order: 1 }, { p1: 0, p2: 5, order: 1 });
+
+                // C2 H's
+                atoms.push({ type: 'H', pos: new THREE.Vector3(0, 1.05, 0.82) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(0, 1.05, -0.82) });
+                bonds.push({ p1: 1, p2: 6, order: 1 }, { p1: 1, p2: 7, order: 1 });
+
+                // C3 H's
+                atoms.push({ type: 'H', pos: new THREE.Vector3(2.0, 0.2, 0) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(1.3, -1.0, 0.82) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(1.3, -1.0, -0.82) });
+                bonds.push({ p1: 2, p2: 8, order: 1 }, { p1: 2, p2: 9, order: 1 }, { p1: 2, p2: 10, order: 1 });
+            } else if (matType === 'cyclohexane') {
+                // C6H12 Accurate Chair Conformation
+                const r = 1.45;
+                const zOffset = 0.28;
+                const cPos = [];
+
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i / 6) * Math.PI * 2;
+                    const z = (i % 2 === 0) ? zOffset : -zOffset;
+                    cPos.push(new THREE.Vector3(r * Math.cos(angle), r * Math.sin(angle), z));
+                    atoms.push({ type: 'C', pos: cPos[i] });
+                }
+
+                for (let i = 0; i < 6; i++) {
+                    const next = (i + 1) % 6;
+                    bonds.push({ p1: i, p2: next, order: 1 });
+
+                    // Axial and Equatorial Hydrogens
+                    const p = cPos[i];
+                    const isUp = (i % 2 === 0);
+                    const axialH = p.clone().add(new THREE.Vector3(0, 0, isUp ? 0.95 : -0.95));
+                    const eqH = p.clone().add(new THREE.Vector3(p.x * 0.55, p.y * 0.55, isUp ? -0.3 : 0.3));
+
+                    atoms.push({ type: 'H', pos: axialH });
+                    atoms.push({ type: 'H', pos: eqH });
+                    bonds.push({ p1: i, p2: atoms.length - 2, order: 1 });
+                    bonds.push({ p1: i, p2: atoms.length - 1, order: 1 });
+                }
+            } else if (matType === 'graphite') {
+                // 2 Stacked Hexagonal Layers (AB Stacking)
+                for (let layer = 0; layer < 2; layer++) {
+                    const z = (layer === 0) ? -1.25 : 1.25;
+                    const shiftX = (layer === 1) ? 0.7 : 0;
+                    const offsetIdx = atoms.length;
+
+                    for (let i = 0; i < 6; i++) {
+                        const a = (i / 6) * Math.PI * 2;
+                        atoms.push({ type: 'C', pos: new THREE.Vector3(shiftX + Math.cos(a) * 1.35, Math.sin(a) * 1.35, z) });
+                    }
+                    for (let i = 0; i < 6; i++) {
+                        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+                        atoms.push({ type: 'C', pos: new THREE.Vector3(shiftX + Math.cos(a) * 2.35, Math.sin(a) * 2.35, z) });
+                    }
+
+                    for (let i = 0; i < 6; i++) {
+                        bonds.push({ p1: offsetIdx + i, p2: offsetIdx + ((i + 1) % 6), order: 2 });
+                        bonds.push({ p1: offsetIdx + i, p2: offsetIdx + 6 + i, order: 1 });
+                    }
+                }
+            } else if (matType === 'graphene') {
+                // Monolayer 2D Honeycomb Sheet
+                const hexCenters = [
+                    new THREE.Vector3(0, 0, 0),
+                    new THREE.Vector3(2.1, 0, 0),
+                    new THREE.Vector3(-2.1, 0, 0),
+                    new THREE.Vector3(1.05, 1.82, 0),
+                    new THREE.Vector3(-1.05, 1.82, 0),
+                    new THREE.Vector3(1.05, -1.82, 0),
+                    new THREE.Vector3(-1.05, -1.82, 0)
+                ];
+
+                const posMap = new Map();
+                hexCenters.forEach(center => {
+                    for (let i = 0; i < 6; i++) {
+                        const a = (i / 6) * Math.PI * 2;
+                        const x = Math.round((center.x + Math.cos(a) * 1.25) * 100) / 100;
+                        const y = Math.round((center.y + Math.sin(a) * 1.25) * 100) / 100;
+                        const key = `${x},${y}`;
+
+                        if (!posMap.has(key)) {
+                            posMap.set(key, atoms.length);
+                            atoms.push({ type: 'C', pos: new THREE.Vector3(x, y, 0) });
+                        }
+                    }
+                });
+
+                for (let i = 0; i < atoms.length; i++) {
+                    for (let j = i + 1; j < atoms.length; j++) {
+                        if (atoms[i].pos.distanceTo(atoms[j].pos) < 1.35) {
+                            bonds.push({ p1: i, p2: j, order: (i + j) % 2 === 0 ? 2 : 1 });
+                        }
+                    }
+                }
+            } else if (matType === 'fullerene') {
+                // Exact C60 Soccer Ball Model (60 Vertices)
+                const c60Verts = getFullereneC60Vertices();
+                c60Verts.forEach(v => atoms.push({ type: 'C', pos: v }));
+
+                // Connect C60 bond edges
+                for (let i = 0; i < atoms.length; i++) {
+                    for (let j = i + 1; j < atoms.length; j++) {
+                        const dist = atoms[i].pos.distanceTo(atoms[j].pos);
+                        if (dist > 0.95 && dist < 1.35) {
+                            bonds.push({ p1: i, p2: j, order: (i + j) % 3 === 0 ? 2 : 1 });
+                        }
+                    }
+                }
+            } else if (matType === 'cnt') {
+                // Carbon Nanotube Armchair (5,5) Model
+                const numRings = 5;
+                const r = 1.45;
+                const numPerRing = 10;
+
+                for (let ring = 0; ring < numRings; ring++) {
+                    const z = (ring - (numRings - 1) / 2) * 1.1;
+                    const offsetAngle = (ring % 2) * (Math.PI / numPerRing);
+
+                    for (let i = 0; i < numPerRing; i++) {
+                        const a = (i / numPerRing) * Math.PI * 2 + offsetAngle;
+                        atoms.push({
+                            type: 'C',
+                            pos: new THREE.Vector3(r * Math.cos(a), r * Math.sin(a), z)
+                        });
+
+                        const currIdx = atoms.length - 1;
+                        if (i > 0) bonds.push({ p1: currIdx - 1, p2: currIdx, order: i % 2 === 0 ? 2 : 1 });
+                        if (i === numPerRing - 1) bonds.push({ p1: currIdx, p2: currIdx - numPerRing + 1, order: 1 });
+
+                        if (ring > 0) {
+                            const prevRingIdx = currIdx - numPerRing;
+                            bonds.push({ p1: prevRingIdx, p2: currIdx, order: 1 });
+                        }
+                    }
+                }
+            } else if (matType === 'ethene') {
+                // C2H4 Planar 120 deg
+                atoms.push({ type: 'C', pos: new THREE.Vector3(-0.67, 0, 0) });
+                atoms.push({ type: 'C', pos: new THREE.Vector3(0.67, 0, 0) });
+                bonds.push({ p1: 0, p2: 1, order: 2 }); // C=C Double Bond
+
+                atoms.push({ type: 'H', pos: new THREE.Vector3(-1.32, 0.92, 0) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(-1.32, -0.92, 0) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(1.32, 0.92, 0) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(1.32, -0.92, 0) });
+                bonds.push({ p1: 0, p2: 2, order: 1 }, { p1: 0, p2: 3, order: 1 }, { p1: 1, p2: 4, order: 1 }, { p1: 1, p2: 5, order: 1 });
+            } else if (matType === 'benzene') {
+                // C6H6 Regular Planar Hexagon (120 deg)
+                const cRad = 1.45;
+                const hRad = 2.45;
+
+                for (let i = 0; i < 6; i++) {
+                    const a = (i / 6) * Math.PI * 2;
+                    atoms.push({ type: 'C', pos: new THREE.Vector3(cRad * Math.cos(a), cRad * Math.sin(a), 0) });
+                }
+                for (let i = 0; i < 6; i++) {
+                    const a = (i / 6) * Math.PI * 2;
+                    atoms.push({ type: 'H', pos: new THREE.Vector3(hRad * Math.cos(a), hRad * Math.sin(a), 0) });
+                }
+
+                for (let i = 0; i < 6; i++) {
+                    const nextC = (i + 1) % 6;
+                    bonds.push({ p1: i, p2: nextC, order: (i % 2 === 0) ? 2 : 1 });
+                    bonds.push({ p1: i, p2: i + 6, order: 1 });
+                }
+            } else if (matType === 'carbyne') {
+                // Carbyne Linear Chain (...-C≡C-C≡C-...)
+                const numC = 7;
+                for (let i = 0; i < numC; i++) {
+                    const x = (i - (numC - 1) / 2) * 1.25;
+                    atoms.push({ type: 'C', pos: new THREE.Vector3(x, 0, 0) });
+                    if (i > 0) {
+                        bonds.push({ p1: i - 1, p2: i, order: (i % 2 === 1) ? 3 : 1 });
+                    }
+                }
+            } else if (matType === 'ethyne') {
+                // C2H2 Linear 180 deg (C≡C)
+                atoms.push({ type: 'C', pos: new THREE.Vector3(-0.65, 0, 0) });
+                atoms.push({ type: 'C', pos: new THREE.Vector3(0.65, 0, 0) });
+                bonds.push({ p1: 0, p2: 1, order: 3 }); // Triple Bond!
+
+                atoms.push({ type: 'H', pos: new THREE.Vector3(-1.75, 0, 0) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(1.75, 0, 0) });
+                bonds.push({ p1: 0, p2: 2, order: 1 }, { p1: 1, p2: 3, order: 1 });
+            } else if (matType === 'co2') {
+                // CO2 Linear 180 deg (O=C=O)
+                atoms.push({ type: 'C', pos: new THREE.Vector3(0, 0, 0) });
+                atoms.push({ type: 'O', pos: new THREE.Vector3(-1.35, 0, 0) });
+                atoms.push({ type: 'O', pos: new THREE.Vector3(1.35, 0, 0) });
+                bonds.push({ p1: 0, p2: 1, order: 2 }, { p1: 0, p2: 2, order: 2 });
+            } else if (matType === 'ethanol') {
+                // Ethanol (C2H5OH)
+                atoms.push({ type: 'C', pos: new THREE.Vector3(-1.1, -0.2, 0) });
+                atoms.push({ type: 'C', pos: new THREE.Vector3(0.3, 0.3, 0) });
+                atoms.push({ type: 'O', pos: new THREE.Vector3(1.35, -0.45, 0) });
+                bonds.push({ p1: 0, p2: 1, order: 1 }, { p1: 1, p2: 2, order: 1 });
+
+                // Hydroxyl H
+                atoms.push({ type: 'H', pos: new THREE.Vector3(2.1, -0.05, 0) });
+                bonds.push({ p1: 2, p2: 3, order: 1 });
+
+                // H's on C1
+                atoms.push({ type: 'H', pos: new THREE.Vector3(-1.2, -1.25, 0) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(-1.75, 0.25, 0.8) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(-1.75, 0.25, -0.8) });
+                bonds.push({ p1: 0, p2: 4, order: 1 }, { p1: 0, p2: 5, order: 1 }, { p1: 0, p2: 6, order: 1 });
+
+                // H's on C2
+                atoms.push({ type: 'H', pos: new THREE.Vector3(0.4, 1.12, 0.75) });
+                atoms.push({ type: 'H', pos: new THREE.Vector3(0.4, 1.12, -0.75) });
+                bonds.push({ p1: 1, p2: 7, order: 1 }, { p1: 1, p2: 8, order: 1 });
+            }
+
+            return { atoms, bonds };
+        }
+
+        // Section 1 Material 3D Renderer with Fly-In Assembly Animation
+        function renderSimMaterial(matType) {
+            if (!simGroup) return;
+
+            while (simGroup.children.length > 0) {
+                const child = simGroup.children[0];
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+                simGroup.remove(child);
+            }
+
+            activeAtomsData = [];
+            activeBondsData = [];
+
+            const matData = generateMaterialData(matType);
+
+            matData.atoms.forEach((atom) => {
+                const mesh = createAtomMesh(atom.type);
+
+                const angle1 = Math.random() * Math.PI * 2;
+                const angle2 = (Math.random() - 0.5) * Math.PI;
+                const radius = 12 + Math.random() * 8;
+
+                const startPos = new THREE.Vector3(
+                    radius * Math.cos(angle1) * Math.cos(angle2),
+                    radius * Math.sin(angle2),
+                    radius * Math.sin(angle1) * Math.cos(angle2)
+                );
+
+                mesh.position.copy(startPos);
+                simGroup.add(mesh);
+
+                activeAtomsData.push({
+                    mesh: mesh,
+                    startPos: startPos,
+                    targetPos: atom.pos.clone(),
+                    type: atom.type
+                });
+            });
+
+            matData.bonds.forEach((bond) => {
+                const p1 = matData.atoms[bond.p1].pos;
+                const p2 = matData.atoms[bond.p2].pos;
+
+                const bondGroup = createBondMeshGroup(p1, p2, bond.order);
+                bondGroup.visible = false;
+                simGroup.add(bondGroup);
+
+                activeBondsData.push({
+                    group: bondGroup,
+                    p1Idx: bond.p1,
+                    p2Idx: bond.p2,
+                    order: bond.order,
+                    radius: 0.07
+                });
+            });
+
+            assemblyProgress = 0;
+            isAssembling = true;
+        }
+
+        function renderMaterialList() {
+            const listEl = document.getElementById('material-list');
+            listEl.innerHTML = '';
+
+            const filtered = materialDB.filter(m => currentFilter === 'all' || m.bondType === currentFilter);
+            document.getElementById('material-count-badge').textContent = `총 ${filtered.length}종 탐구`;
+
+            filtered.forEach(m => {
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between ${m.id === currentMaterial.id ? 'item-active border-red-500 bg-red-50 font-bold' : 'border-slate-200 bg-white hover:bg-slate-50'}`;
+                btn.onclick = () => selectMaterial(m.id);
+
+                btn.innerHTML = `
+                    <div>
+                        <div class="text-xs font-bold text-slate-900">${m.name}</div>
+                        <div class="text-[10px] text-slate-500 font-mono">${m.formula} | ${m.hybrid}</div>
+                    </div>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">${m.badge.split(' ')[0]}</span>
+                `;
+                listEl.appendChild(btn);
+            });
+        }
+
+        function filterMaterials(type) {
+            currentFilter = type;
+            ['all', 'single', 'double', 'triple'].forEach(t => {
+                const btn = document.getElementById(`filter-${t}`);
+                if (t === type) {
+                    btn.className = "filter-btn py-1.5 px-1 rounded-lg bg-slate-800 text-white font-bold text-center";
+                } else {
+                    btn.className = "filter-btn py-1.5 px-1 rounded-lg bg-slate-100 text-slate-600 font-medium hover:bg-slate-200 text-center";
+                }
+            });
+            renderMaterialList();
+        }
+
+        function selectMaterial(id) {
+            const mat = materialDB.find(m => m.id === id);
+            if (!mat) return;
+
+            currentMaterial = mat;
+            isCustom = false;
+            document.getElementById('custom-atom-badge').classList.add('hidden');
+
+            renderMaterialList();
+            updateSimUI();
+            renderSimMaterial(mat.type);
+        }
+
+        function updateSimUI() {
+            document.getElementById('canvas-status-title').textContent = `${currentMaterial.name} 결합 진행 중...`;
+            document.getElementById('info-title').textContent = currentMaterial.name;
+            document.getElementById('info-formula').textContent = currentMaterial.formula;
+            document.getElementById('info-badge').textContent = currentMaterial.badge;
+            document.getElementById('info-desc').textContent = currentMaterial.desc;
+            document.getElementById('info-angle').textContent = currentMaterial.angle;
+            document.getElementById('info-app').textContent = currentMaterial.app;
+
+            document.getElementById('val-hardness').textContent = `${currentMaterial.hardness} / 100`;
+            document.getElementById('bar-hardness').style.width = `${currentMaterial.hardness}%`;
+
+            document.getElementById('val-elec').textContent = currentMaterial.elecText;
+            document.getElementById('bar-elec').style.width = `${currentMaterial.elec}%`;
+
+            document.getElementById('val-thermal').textContent = `${currentMaterial.thermal}%`;
+            document.getElementById('bar-thermal').style.width = `${currentMaterial.thermal}%`;
+        }
+
+        function addAtom(type) { customCounts[type]++; isCustom = true; updateCustomSim(); }
+        function removeAtom(type) { if(customCounts[type] > 0) customCounts[type]--; updateCustomSim(); }
+
+        function updateCustomSim() {
+            document.getElementById('custom-atom-badge').classList.remove('hidden');
+            document.getElementById('cnt-c').textContent = customCounts.C;
+            document.getElementById('cnt-h').textContent = customCounts.H;
+            document.getElementById('cnt-o').textContent = customCounts.O;
+        }
+
+        function resetView() {
+            if (simCamera) simCamera.position.set(0, 0, 14);
+            if (simGroup) simGroup.rotation.set(0, 0, 0);
+        }
+
+        function triggerAssemblyAnimation() {
+            const banner = document.getElementById('assembly-banner');
+            if (banner) banner.classList.remove('hidden');
+            renderSimMaterial(currentMaterial.type);
+        }
+
+        function setHybrid(hybridType) {
+            const mat = materialDB.find(m => m.hybrid === hybridType);
+            if (mat) selectMaterial(mat.id);
+        }
+
+        // SECTION 2: FREE MODE ATOM CONTROLS & INSTANT DYNAMIC ANIMATION RE-RENDER
+        function freeAddAtom(type) {
+            freeCounts[type]++;
+            updateFreePrediction();
+        }
+
+        function freeRemoveAtom(type) {
+            if (freeCounts[type] > 0) {
+                freeCounts[type]--;
+                updateFreePrediction();
+            }
+        }
+
+        function clearFreeAtoms() {
+            freeCounts = { C: 0, H: 0, O: 0 };
+            updateFreePrediction();
+        }
+
+        function loadFreePreset(preset) {
+            if (preset === 'water') freeCounts = { C: 0, H: 2, O: 1 };
+            else if (preset === 'co2') freeCounts = { C: 1, H: 0, O: 2 };
+            else if (preset === 'ethanol') freeCounts = { C: 2, H: 6, O: 1 };
+            else if (preset === 'acetic') freeCounts = { C: 2, H: 4, O: 2 };
+            else if (preset === 'methane') freeCounts = { C: 1, H: 4, O: 0 };
+            else if (preset === 'glucose') freeCounts = { C: 6, H: 12, O: 6 };
+
+            updateFreePrediction();
+        }
+
+        // Chemical Prediction Engine for Free Mode
+        function updateFreePrediction() {
+            const c = freeCounts.C;
+            const h = freeCounts.H;
+            const o = freeCounts.O;
+
+            document.getElementById('free-cnt-c-val').textContent = c;
+            document.getElementById('free-cnt-h-val').textContent = h;
+            document.getElementById('free-cnt-o-val').textContent = o;
+
+            // Calculate Molecular Weight
+            const mw = (c * 12.011 + h * 1.008 + o * 15.999).toFixed(2);
+            document.getElementById('free-mol-weight').textContent = `${mw} g/mol`;
+
+            let name = "알 수 없는 분자 조합";
+            let formula = `C${c > 1 ? c : (c === 1 ? '' : '0')}H${h > 1 ? h : (h === 1 ? '' : '0')}O${o > 1 ? o : (o === 1 ? '' : '0')}`;
+            if (c === 0) formula = `H${h > 1 ? h : (h === 1 ? '' : '0')}O${o > 1 ? o : (o === 1 ? '' : '0')}`;
+            if (c === 0 && o === 0) formula = `H${h}`;
+            if (c === 0 && h === 0) formula = `O${o}`;
+
+            let desc = "조합된 원자들로 구성된 유기/무기 물질 구조입니다.";
+            let group = "사용자 정의 조합";
+            let bondInfo = "공유 결합";
+            let usage = "다양한 화학 반응 연구용 원자 조합입니다.";
+
+            if (c === 1 && h === 4 && o === 0) {
+                name = "메테인 (Methane, CH₄)"; formula = "CH₄";
+                desc = "탄소 1개와 수소 4개가 결합된 가장 간단한 정사면체 구형 알케인 가스입니다.";
+                group = "알케인 (Alkane)"; bondInfo = "단일 결합 (sp³ 정사면체)";
+                usage = "천연가스(LNG)의 주성분이며 난방 및 버스 연료로 널리 쓰입니다.";
+            } else if (c === 0 && h === 2 && o === 1) {
+                name = "물 (Water, H₂O)"; formula = "H₂O";
+                desc = "산소 1개와 수소 2개가 104.5도 굽은형 구조를 이루는 극성 공유 결합 물질입니다.";
+                group = "무기 화합물 (Water)"; bondInfo = "단일 공유 결합 (104.5° 굽은형)";
+                usage = "지구상 모든 생명체의 필수 생명 유지 용매입니다.";
+            } else if (c === 1 && h === 0 && o === 2) {
+                name = "이산화탄소 (Carbon Dioxide, CO₂)"; formula = "CO₂";
+                desc = "중심 탄소가 양쪽 산소와 이중 결합을 이룬 180도 직선형 무극성 분자입니다.";
+                group = "탄산계 무기화합물"; bondInfo = "이중 결합 (sp 180° 직선형)";
+                usage = "탄산음료, 드라이아이스, 식물 광합성 반응의 필수 물질입니다.";
+            } else if (c === 2 && h === 6 && o === 1) {
+                name = "에탄올 (Ethanol, C₂H₅OH)"; formula = "C₂H₅OH";
+                desc = "2개의 탄소 사슬 끝에 하이드록시기(-OH)가 결합된 극성 알코올 화합물입니다.";
+                group = "알코올류 (-OH)"; bondInfo = "단일 결합 (sp³)";
+                usage = "의료용 소독 알코올, 주류, 친환경 바이오 연료에 사용됩니다.";
+            } else if (c === 2 && h === 4 && o === 2) {
+                name = "아세트산 (Acetic Acid, CH₃COOH)"; formula = "CH₃COOH";
+                desc = "카복시기(-COOH)를 가져 약산성을 띠는 대표적인 유기산 화합물입니다.";
+                group = "카복산류 (-COOH)"; bondInfo = "단일/이중 결합 혼합";
+                usage = "식초의 주성분, 합성 섬유 및 의약품 제조 원료입니다.";
+            } else if (c === 6 && h === 12 && o === 6) {
+                name = "포도당 (Glucose, C₆H₁₂O₆)"; formula = "C₆H₁₂O₆";
+                desc = "생명체 에너지원의 핵심이 되는 육탄당 단당류 유기 화합물입니다.";
+                group = "탄수화물 (Carbohydrate)"; bondInfo = "복합 단일 공유 결합";
+                usage = "생물체의 세포 호흡 및 ATP 에너지 생성의 핵심 원료입니다.";
+            } else if (c === 2 && h === 6 && o === 0) {
+                name = "에테인 (Ethane, C₂H₆)"; formula = "C₂H₆";
+                desc = "탄소 2개가 C-C 단일 결합으로 연결된 포화 탄화수소입니다.";
+                group = "알케인 (Alkane)"; bondInfo = "단일 결합 (sp³)";
+                usage = "석유화학 에틸렌 생산 및 산업 가스 연료로 사용됩니다.";
+            } else if (c === 2 && h === 4 && o === 0) {
+                name = "에텐 / 에틸렌 (Ethene, C₂H₄)"; formula = "C₂H₄";
+                desc = "탄소간 이중 결합(C=C) 1개를 가지는 평면 알켄 분자입니다.";
+                group = "알켄 (Alkene)"; bondInfo = "이중 결합 (sp² 평면)";
+                usage = "플라스틱 비닐(PE) 제조 및 과일 조기 후숙 촉진제입니다.";
+            } else if (c === 2 && h === 2 && o === 0) {
+                name = "에타인 / 아세틸렌 (Ethyne, C₂H₂)"; formula = "C₂H₂";
+                desc = "탄소간 삼중 결합(C≡C)을 가지는 180도 직선형 알카인 분자입니다.";
+                group = "알카인 (Alkyne)"; bondInfo = "삼중 결합 (sp 직선)";
+                usage = "고온 금속 산소-아세틸렌 용접 연료로 쓰입니다.";
+            }
+
+            document.getElementById('free-predicted-name').textContent = name;
+            document.getElementById('free-formula-display').textContent = formula;
+            document.getElementById('free-predicted-desc').textContent = desc;
+            document.getElementById('free-functional-group').textContent = group;
+            document.getElementById('free-bond-info').textContent = bondInfo;
+            document.getElementById('free-usage-text').textContent = usage;
+
+            // Trigger Dynamic 3D Re-render with Atom Assembly Animation
+            updateFree3D(true);
+        }
+
+        // REAL-TIME 3D MOLECULE GENERATOR FOR FREE MODE WITH ANIMATED ATOM ASSEMBLY
+        function updateFree3D(triggerAnim = false) {
+            if (!freeGroup) return;
+
+            const toast = document.getElementById('free-anim-toast');
+            if (toast && triggerAnim) toast.classList.remove('hidden');
+
+            const cCount = freeCounts.C;
+            const hCount = freeCounts.H;
+            const oCount = freeCounts.O;
+
+            // Calculate Target Atom Positions
+            const targetAtoms = [];
+            const targetBonds = [];
+
+            if (cCount === 0 && hCount === 0 && oCount === 0) {
+                // Empty Placeholder
+                targetAtoms.push({ type: 'C', pos: new THREE.Vector3(0, 0, 0), scale: 0.2 });
+            } else if (cCount === 0) {
+                // Inorganic Water / Hydrogen / Oxygen
+                if (oCount > 0) {
+                    for (let i = 0; i < oCount; i++) {
+                        targetAtoms.push({ type: 'O', pos: new THREE.Vector3((i - (oCount - 1) / 2) * 1.5, 0, 0) });
+                        if (i > 0) targetBonds.push({ p1: i - 1, p2: i, order: 1 });
+                    }
+                    let hLeft = hCount;
+                    let oIdx = 0;
+                    while (hLeft > 0 && targetAtoms.length > 0) {
+                        const hostO = targetAtoms[oIdx % oCount].pos;
+                        const angle = (hLeft * 104.5 * Math.PI / 180) + (oIdx * 0.5);
+                        const hPos = new THREE.Vector3(
+                            hostO.x + Math.sin(angle) * 1.1,
+                            hostO.y + Math.cos(angle) * 1.1,
+                            hostO.z + ((hLeft % 2 === 0) ? 0.3 : -0.3)
+                        );
+                        targetAtoms.push({ type: 'H', pos: hPos });
+                        targetBonds.push({ p1: oIdx % oCount, p2: targetAtoms.length - 1, order: 1 });
+                        hLeft--;
+                        oIdx++;
+                    }
+                } else if (hCount > 0) {
+                    for (let i = 0; i < hCount; i++) {
+                        const angle = (i / hCount) * Math.PI * 2;
+                        targetAtoms.push({ type: 'H', pos: new THREE.Vector3(Math.cos(angle) * 1.0, Math.sin(angle) * 1.0, 0) });
+                        if (i > 0 && hCount === 2) targetBonds.push({ p1: 0, p2: 1, order: 1 });
+                    }
+                }
+            } else {
+                // Carbon-containing Compounds
+                const carbonIndices = [];
+                for (let i = 0; i < cCount; i++) {
+                    let cPos;
+                    if (cCount === 1) {
+                        cPos = new THREE.Vector3(0, 0, 0);
+                    } else if (cCount === 6 && hCount === 6) {
+                        const angle = (i / 6) * Math.PI * 2;
+                        cPos = new THREE.Vector3(Math.cos(angle) * 1.5, Math.sin(angle) * 1.5, 0);
+                    } else {
+                        const x = (i - (cCount - 1) / 2) * 1.4;
+                        const y = (i % 2 === 0) ? 0.3 : -0.3;
+                        cPos = new THREE.Vector3(x, y, 0);
+                    }
+                    targetAtoms.push({ type: 'C', pos: cPos });
+                    carbonIndices.push(targetAtoms.length - 1);
+
+                    if (i > 0) {
+                        const bondOrder = (cCount === 2 && hCount === 4) ? 2 : (cCount === 2 && hCount === 2) ? 3 : 1;
+                        targetBonds.push({ p1: carbonIndices[i - 1], p2: carbonIndices[i], order: bondOrder });
+                    }
+                }
+
+                // Oxygen Atoms Attached
+                const oxygenIndices = [];
+                let oLeft = oCount;
+                let cAttachIdx = 0;
+                while (oLeft > 0) {
+                    const hostC = targetAtoms[carbonIndices[cAttachIdx % cCount]].pos;
+                    const oAngle = (oLeft * 2.1) + (cAttachIdx * 1.2);
+                    const oPos = new THREE.Vector3(
+                        hostC.x + Math.cos(oAngle) * 1.3,
+                        hostC.y + Math.sin(oAngle) * 1.3,
+                        hostC.z + ((oLeft % 2 === 0) ? 0.6 : -0.6)
+                    );
+                    targetAtoms.push({ type: 'O', pos: oPos });
+                    const newOIdx = targetAtoms.length - 1;
+                    oxygenIndices.push(newOIdx);
+
+                    const isDouble = (cCount === 1 && oCount === 2) || (oLeft === 1 && cCount === 2 && oCount === 2);
+                    targetBonds.push({ p1: carbonIndices[cAttachIdx % cCount], p2: newOIdx, order: isDouble ? 2 : 1 });
+                    oLeft--;
+                    cAttachIdx++;
+                }
+
+                // Hydrogen Atoms Distributed
+                let hLeft = hCount;
+                let hAnchorIdx = 0;
+                const tetDirs = [
+                    new THREE.Vector3(1, 1, 1).normalize().multiplyScalar(1.15),
+                    new THREE.Vector3(-1, -1, 1).normalize().multiplyScalar(1.15),
+                    new THREE.Vector3(-1, 1, -1).normalize().multiplyScalar(1.15),
+                    new THREE.Vector3(1, -1, -1).normalize().multiplyScalar(1.15)
+                ];
+
+                while (hLeft > 0) {
+                    if (cCount === 1 && oCount === 0) {
+                        const hostC = targetAtoms[0].pos;
+                        const dir = tetDirs[(4 - hLeft) % 4];
+                        targetAtoms.push({ type: 'H', pos: hostC.clone().add(dir) });
+                        targetBonds.push({ p1: 0, p2: targetAtoms.length - 1, order: 1 });
+                    } else {
+                        const hostC = targetAtoms[carbonIndices[hAnchorIdx % cCount]].pos;
+                        const angle = (hLeft * 1.8) + (hAnchorIdx * 0.9);
+                        const hPos = new THREE.Vector3(
+                            hostC.x + Math.cos(angle) * 1.1,
+                            hostC.y + Math.sin(angle) * 1.1,
+                            hostC.z + ((hLeft % 2 === 0) ? 0.7 : -0.7)
+                        );
+                        targetAtoms.push({ type: 'H', pos: hPos });
+                        targetBonds.push({ p1: carbonIndices[hAnchorIdx % cCount], p2: targetAtoms.length - 1, order: 1 });
+                    }
+                    hLeft--;
+                    hAnchorIdx++;
+                }
+            }
+
+            // Clear old group
+            while (freeGroup.children.length > 0) {
+                const child = freeGroup.children[0];
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+                freeGroup.remove(child);
+            }
+
+            freeAtomsData = [];
+            freeBondsData = [];
+
+            // Build Animated Atom Objects in Free Group
+            targetAtoms.forEach((atom) => {
+                const mesh = createAtomMesh(atom.type);
+                const targetScale = atom.scale || 1.0;
+
+                let startPos = atom.pos.clone();
+                let startScale = targetScale;
+                let isNew = false;
+
+                if (triggerAnim) {
+                    isNew = true;
+                    // Spawn random pop offset
+                    startPos = atom.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3));
+                    startScale = 0.01;
+                    mesh.scale.set(0.01, 0.01, 0.01);
+                } else {
+                    mesh.scale.set(targetScale, targetScale, targetScale);
+                }
+
+                mesh.position.copy(startPos);
+                freeGroup.add(mesh);
+
+                freeAtomsData.push({
+                    mesh: mesh,
+                    startPos: startPos,
+                    targetPos: atom.pos.clone(),
+                    startScale: startScale,
+                    targetScale: targetScale,
+                    isNew: isNew
+                });
+            });
+
+            // Build Bond Groups
+            targetBonds.forEach((bond) => {
+                if (targetAtoms[bond.p1] && targetAtoms[bond.p2]) {
+                    const p1 = targetAtoms[bond.p1].pos;
+                    const p2 = targetAtoms[bond.p2].pos;
+
+                    const bondGroup = createBondMeshGroup(p1, p2, bond.order);
+                    freeGroup.add(bondGroup);
+
+                    freeBondsData.push({
+                        group: bondGroup,
+                        p1Idx: bond.p1,
+                        p2Idx: bond.p2,
+                        order: bond.order,
+                        radius: 0.07
+                    });
+                }
+            });
+
+            if (triggerAnim) {
+                freeAnimProgress = 0;
+                isFreeAnimating = true;
+            }
+        }
+
+        // SECTION 3: QUIZ ENGINE
+        const quizPool = [
+            {
+                q: '1. 다이아몬드와 흑연은 모두 탄소(C) 원자로만 이루어진 동소체입니다. 다이아몬드가 부도체인 반면, 흑연이 전기를 잘 통하는 원인은 무엇일까요?',
+                options: [
+                    '다이아몬드는 수소 원자와 결합되어 있기 때문',
+                    '흑연은 sp² 혼성 결합을 하여 층 사이를 이동하는 자유롭게 비전재화된 π 전자가 존재하기 때문',
+                    '흑연은 정사면체 구조를 이루어 밀도가 높기 때문',
+                    '다이아몬드는 탄소간 결합력이 약해 전자를 방출하기 때문'
+                ],
+                ans: 1,
+                explain: '흑연은 탄소가 sp² 혼성 결합을 이루어 판상 벌집 구조를 만들고, 결합에 참여하지 않은 1개의 외각 전자가 자유롭게 움직여 우수한 전기 전도성을 나타냅니다.'
+            },
+            {
+                q: '2. 메테인(CH₄) 분자의 탄소(C) 원자가 형성하는 공유 결합 각도는 몇 도일까요?',
+                options: ['90°', '104.5°', '109.5°', '120°'],
+                ans: 2,
+                explain: '메테인은 sp³ 혼성 오비탈을 형성하여 중심 탄소 주위에 4개의 수소가 균등하게 배치되는 109.5° 정사면체 분자 구조를 가집니다.'
+            },
+            {
+                q: '3. 축구공 모양의 구형 구조를 가지고 있어 약물 전달체나 항산화 소재로 연구되는 탄소 동소체는?',
+                options: ['그래핀 (Graphene)', '탄소 나노튜브 (CNT)', '풀러렌 (C₆₀)', '카바인 (Carbyne)'],
+                ans: 2,
+                explain: '풀러렌(C₆₀)은 60개의 탄소 원자가 12개의 오각형과 20개의 육각형으로 연결되어 축구공 형태의 구형 분자를 형성합니다.'
+            },
+            {
+                q: '4. 에텐 / 에틸렌(C₂H₄) 분자에 존재하는 탄소간 결합 형태와 입체 구조 특징은 무엇일까요?',
+                options: [
+                    '단일 결합 - 정사면체 구조',
+                    '이중 결합 - 동일 평면상에 존재하는 평면 분자 (120°)',
+                    '삼중 결합 - 180도 직선형 분자',
+                    '공명 고리 결합 - 의자형 고리 구조'
+                ],
+                ans: 1,
+                explain: '에텐(C₂H₄)은 두 탄소 사이에 C=C 이중 결합 1개를 포함하며, sp² 혼성 결합으로 120도 평면 분자 구조를 갖습니다.'
+            },
+            {
+                q: '5. 에탄올(C₂H₅OH) 화합물이 물에 잘 녹는 주요 이유가 되는 작용기는 무엇일까요?',
+                options: ['카복시기 (-COOH)', '하이드록시기 (-OH)', '카보닐기 (-CO-)', '에테르기 (-O-)'],
+                ans: 1,
+                explain: '에탄올은 극성을 띠는 하이드록시기(-OH)를 가지고 있어 물 분자와 수소 결합을 형성하므로 물에 매우 잘 녹습니다.'
+            },
+            {
+                q: '6. 중심 탄소(C)가 양쪽 산소(O) 원자와 각각 이중 결합을 이루고 있는 이산화탄소(CO₂)의 분자 구조는?',
+                options: ['109.5° 정사면체형', '104.5° 굽은형', '120° 평면 삼각형', '180° 직선형'],
+                ans: 3,
+                explain: '이산화탄소(O=C=O)는 중심 탄소가 sp 혼성 결합으로 양쪽 산소와 이중 결합을 이루어 결합 쌍 간 반발이 최소화되는 180° 직선형 구조입니다.'
+            }
+        ];
+
+        let currentQuizSet = [];
+        let userAnswers = {};
+
+        function reshuffleQuiz() {
+            // Shuffle and pick 3
+            const shuffled = [...quizPool].sort(() => 0.5 - Math.random());
+            currentQuizSet = shuffled.slice(0, 3);
+            userAnswers = {};
+
+            const container = document.getElementById('quiz-list');
+            container.innerHTML = '';
+
+            currentQuizSet.forEach((qObj, idx) => {
+                const card = document.createElement('div');
+                card.className = "p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3";
+
+                let optionsHTML = '';
+                qObj.options.forEach((opt, oIdx) => {
+                    optionsHTML += `
+                        <label onclick="selectQuizAns(${idx}, ${oIdx})" class="flex items-center space-x-2.5 p-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer text-xs transition">
+                            <input type="radio" name="q_${idx}" value="${oIdx}" class="accent-red-600">
+                            <span class="text-slate-800 font-medium">${opt}</span>
+                        </label>
+                    `;
+                });
+
+                card.innerHTML = `
+                    <div class="font-bold text-xs sm:text-sm text-slate-900">${qObj.q}</div>
+                    <div class="space-y-1.5">${optionsHTML}</div>
+                    <div id="quiz-exp-${idx}" class="hidden p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 font-medium">
+                        💡 <span class="font-bold">해설:</span> ${qObj.explain}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById('quiz-score').textContent = `점수: 0 / 3`;
+        }
+
+        function selectQuizAns(qIdx, oIdx) {
+            userAnswers[qIdx] = oIdx;
+            
+            let score = 0;
+            currentQuizSet.forEach((qObj, idx) => {
+                const expEl = document.getElementById(`quiz-exp-${idx}`);
+                if (userAnswers[idx] !== undefined) {
+                    expEl.classList.remove('hidden');
+                    if (userAnswers[idx] === qObj.ans) score++;
+                }
+            });
+
+            document.getElementById('quiz-score').textContent = `점수: ${score} / 3`;
+        }
+    </script>
+</body>
+</html>
